@@ -1,0 +1,501 @@
+{
+  "name": "healthcare agent",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "Hi this is healthcare agent.how can i help you today ",
+        "options": {
+          "allowFileUploads": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -880,
+        300
+      ],
+      "id": "60b7b46f-2eda-42dd-b63d-d3e9e6267a38",
+      "name": "When chat message received",
+      "webhookId": "e59e007d-627d-448b-b319-8724df8f5c54"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e21bafa8-dd54-46ea-b013-b211f3860fa5",
+              "leftValue": "={{ $json.chatInput }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "457a5c97-5ad4-4a7c-9cfe-0caa1715a196",
+              "leftValue": "={{ $json.files }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "ef38cbad-04f2-49eb-bddf-baa44d28e361",
+              "leftValue": "={{ $json.files[0].mimeType }}",
+              "rightValue": "image/png",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "14265dea-9518-4183-aaec-007dbb27d89c",
+              "leftValue": "{{$json.chatInput}}",
+              "rightValue": "image",
+              "operator": {
+                "type": "string",
+                "operation": "notStartsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -440,
+        280
+      ],
+      "id": "b92da0fe-8540-4df3-b672-467e5b39d249",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-tesseractjs.tesseractNode",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        100
+      ],
+      "id": "c09704c6-e24a-4e80-b347-1159d493db76",
+      "name": "Tesseract",
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0.5
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        60,
+        240
+      ],
+      "id": "4be30ca3-283b-4112-9ac0-40012c28f6d6",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "aNZ2KYh01YfFvwzF",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chunkSize": 500,
+        "chunkOverlap": 50,
+        "options": {
+          "summarizationMethodAndPrompts": {
+            "values": {
+              "summarizationMethod": "stuff",
+              "prompt": "=You are an expert medical practitioner.\nGiven a health report, summarize it into a concise, accurate, and easy-to-understand format.\nFocus on:\n• Key findings – abnormalities, diagnosis\n• Vital signs and significant lab results\n• Recommendations – follow-ups, treatments\n• Avoid repeating generic or boilerplate content.\nUse clear and formal language suitable for patients or healthcare professionals.\nDo not include personal identifiers.\n\n{{ $json.text }}"
+            }
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainSummarization",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ec872a47-52fa-4a68-8f48-d7e1a4e4502e",
+      "name": "Summarization Chain"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please help me with my report. Here is the report data:\n {{ $json.response.text }}",
+        "options": {
+          "systemMessage": "You are a highly experienced and trusted medical practitioner.\n\nGiven a summarized health report, respond like a doctor would. Analyze and explain the patient’s condition in **clear bullet points**, including:\n\n1. **Current Health Condition**\n   - Provide a brief, high-level overview of the patient’s general health status.\n   - Mention if the condition appears stable, at-risk, or critical based on the findings.\n\n2. **Key Health Findings**\n   - Mention abnormal test results or conditions detected.\n   - Include the reported value, the normal range, and whether it is low, high, or normal.\n\n3. **Future Health Risks**\n   - Point out any risks or complications that may occur based on the data.\n\n4. **Medical Advice**\n   - Suggest actions such as treatment directions, follow-ups, or lifestyle changes.\n   - Use bullet points to keep it brief and readable.\n\n5. **Diet & Supplements**\n   - Recommend specific foods (vegetables, fruits, grains).\n   - Suggest supplements like vitamins, oils, or natural remedies where appropriate.\n\n6. **Avoidance Guidelines**\n   - List any foods, habits, or factors the patient should avoid.\n\n7. **Urgency / Follow-up**\n   - Clearly mention if the patient needs urgent care or a scheduled follow-up.\n\nUse a clear and formal tone suitable for both patients and healthcare professionals. Do not include any personal identifiers. Avoid long paragraphs—use bullet points only.\n\nYou have access to Wikipedia.  \nExplain any complex terms from the health report using Wikipedia.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        380,
+        100
+      ],
+      "id": "0b246bd0-f023-4065-a692-b1e481add450",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        360,
+        300
+      ],
+      "id": "38bbe351-3b16-4817-83f1-c61a2269391b",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "wjNgJ0UUJVjYYoYr",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolWikipedia",
+      "typeVersion": 1,
+      "position": [
+        600,
+        320
+      ],
+      "id": "51795308-6725-4ed1-b808-35fabd69397f",
+      "name": "Wikipedia"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolWikipedia",
+      "typeVersion": 1,
+      "position": [
+        260,
+        720
+      ],
+      "id": "49d4a4a4-d4c9-43a5-be61-22f056491376",
+      "name": "Wikipedia1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9b5b25d7-495d-40b9-87cc-5a4ba1e9de69",
+              "leftValue": "={{ $json.chatInput }}",
+              "rightValue": "image",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -220,
+        500
+      ],
+      "id": "23462d2e-17c8-44ab-9043-d6915502ccc5",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a helpful AI medical assistant. When given a medical term, explain it clearly and concisely in simple bullet points. Avoid complex medical jargon unless necessary.\nFor each medical term, include the following:\n\nA simple definition\n\nWhy it's important\n\nNormal range or value (if applicable)\n\nCommon causes for abnormal levels\n\nAssociated symptoms (if abnormal)\n\nPossible treatments or next steps\n\nFormat all output as clear, easy-to-read bullet points for someone without a medical background.\n\nExample Input: Hemoglobin\n\nExample Output:\n\nHemoglobin is a protein in red blood cells that carries oxygen throughout your body.\n\nIt's important because it helps deliver oxygen to your tissues and organs.\n\nNormal range:\n\nMen: 13.8–17.2 g/dL\n\nWomen: 12.1–15.1 g/dL\n\nLow hemoglobin may be caused by anemia, bleeding, poor diet, or chronic diseases.\n\nHigh hemoglobin might be due to dehydration, lung disease, or living at high altitudes.\n\nSymptoms of abnormal levels include fatigue, dizziness, or shortness of breath.\n\nTreatment depends on the cause – may include iron supplements, treating underlying conditions, or dietary changes."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        20,
+        520
+      ],
+      "id": "3ad10b32-3019-46c0-9c17-9da4d3330ba0",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [
+        740,
+        100
+      ],
+      "id": "27b18a69-c95b-48cd-8da0-657bf47c7a63",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [
+        380,
+        520
+      ],
+      "id": "8a9b60e8-afba-430f-8ec2-aa4e6eec78b0",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7d71a2b4-3fd4-4a6f-a2eb-38ecc46edaef",
+              "leftValue": "={{ $json.chatInput }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -680,
+        300
+      ],
+      "id": "1db2f54f-85d8-4cc2-b3e3-523532049b84",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        60,
+        740
+      ],
+      "id": "f2b81a38-62a0-4a89-bc0c-6f3bf594e945",
+      "name": "Groq Chat Model2",
+      "credentials": {
+        "groqApi": {
+          "id": "1DzMeTRhyJeh34NP",
+          "name": "Groq account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Tesseract",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summarization Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarization Chain": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wikipedia": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wikipedia1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tesseract": {
+      "main": [
+        [
+          {
+            "node": "Summarization Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "acc7b073-9d84-4a96-b0de-fb463d9c182e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f06e02d1e2443f44266b9bbffe6e6c2984a404f88996ba3f9f74307b1bcf6ce5"
+  },
+  "id": "jTciriL5nsvak45b",
+  "tags": []
+}
